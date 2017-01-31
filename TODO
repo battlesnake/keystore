@@ -1,0 +1,1 @@
+fixedstr/fstr should use cstruct/buffer for non-SSO storage, so we can pre-allocate memory rather than realloc'ing for each append operation.
