@@ -37,19 +37,19 @@ void keystore_iterator_rewind(struct keystore_iterator *inst)
 	inst->cursor = NULL;
 }
 
-const char *keystore_iterator_next_key(struct keystore_iterator *inst, size_t *length)
+static const char *find_range(struct keystore_iterator *inst, size_t *length, bool can_begin, char begin, char end)
 {
-	const char *start = find_next(inst->begin, inst->end, inst->cursor, inst->delimiter, true);
+	const char *start = find_next(inst->begin, inst->end, inst->cursor, begin, can_begin);
 	if (start == inst->end) {
 		goto eof;
 	}
-	if (*start == inst->delimiter) {
+	if (*start == begin) {
 		start++;
 		if (start == inst->end) {
 			goto eof;
 		}
 	}
-	const char *finish = find_next(inst->begin, inst->end, start, inst->assignment, false);
+	const char *finish = find_next(inst->begin, inst->end, start, end, false);
 	if (finish == inst->end) {
 		goto eof;
 	}
@@ -62,29 +62,14 @@ eof:
 	return NULL;
 }
 
+const char *keystore_iterator_next_key(struct keystore_iterator *inst, size_t *length)
+{
+	return find_range(inst, length, true, inst->delimiter, inst->assignment);
+}
+
 const char *keystore_iterator_next_value(struct keystore_iterator *inst, size_t *length)
 {
-	const char *start = find_next(inst->begin, inst->end, inst->cursor, inst->assignment, false);
-	if (start == inst->end) {
-		goto eof;
-	}
-	if (*start == inst->assignment) {
-		start++;
-		if (start == inst->end) {
-			goto eof;
-		}
-	}
-	const char *finish = find_next(inst->begin, inst->end, start, inst->delimiter, false);
-	if (finish == inst->end) {
-		goto eof;
-	}
-	inst->cursor = finish;
-	*length = finish - start;
-	return start;
-eof:
-	*length = 0;
-	inst->cursor = inst->end;
-	return NULL;
+	return find_range(inst, length, false, inst->assignment, inst->delimiter);
 }
 
 bool keystore_iterator_next_key_f(struct keystore_iterator *inst, struct fstr *out)
@@ -111,6 +96,11 @@ bool keystore_iterator_next_value_f(struct keystore_iterator *inst, struct fstr 
 		fstr_clear(out);
 		return false;
 	}
+}
+
+bool keystore_iterator_next_pair_f(struct keystore_iterator *inst, struct fstr *key, struct fstr *val)
+{
+	return keystore_iterator_next_key_f(inst, key) && keystore_iterator_next_value_f(inst, val);
 }
 
 bool keystore_iterator_end(struct keystore_iterator *inst)

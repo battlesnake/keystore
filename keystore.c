@@ -3,8 +3,8 @@
 set -euo pipefail
 declare -r out="$(mktemp)"
 trap 'rm -f -- "$out"' EXIT ERR
-gcc -Wall -Wextra -DTEST_keystore_c -std=gnu11 -I./c_modules -O0 -o "$out" $(find . -name '*.c')
-exec "$out"
+gcc -Wall -Wextra -Werror -DTEST_keystore_c -std=gnu11 -I./c_modules -O3 -o "$out" $(find . -name '*.c')
+valgrind --leak-check=full --track-origins=yes --quiet "$out"
 )
 exit 0
 #endif
@@ -183,6 +183,7 @@ int main(int argc, char *argv[])
 	size_t len;
 	const char *buf = keystore_data(&i, &len);
 	printf("\n");
+
 	printf("Buffer: ");
 	for (size_t i = 0; i < len; i++) {
 		if (buf[i]) {
@@ -195,12 +196,15 @@ int main(int argc, char *argv[])
 	keystore_init_from(&o, 256, buf, len);
 	keystore_destroy(&i);
 	printf("\n");
+
 	printf("Lookup:\n");
 	printf(" * key/val: %s\n", keystore_lookup_key(&o, "key"));
 	printf(" * key: %s\n", keystore_lookup(&o, "key", NULL));
 	printf(" * vegetable: %s\n", keystore_lookup(&o, "vegetable", NULL));
 	printf(" * color: %s\n", keystore_lookup(&o, "color", NULL));
 	printf("\n");
+
+	{
 	printf("Printer:\n");
 	struct fstr prefix;
 	fstr_init_ref(&prefix, " - ");
@@ -208,6 +212,9 @@ int main(int argc, char *argv[])
 	printf("\n");
 	keystore_print(&o, '=', '\n', NULL);
 	printf("\n");
+	}
+
+	{
 	printf("Iterator:\n");
 	struct keystore_iterator it;
 	keystore_iterator_init(&it, &o);
@@ -222,6 +229,24 @@ int main(int argc, char *argv[])
 	}
 	keystore_iterator_destroy(&it);
 	printf("\n");
+	}
+
+	{
+	printf("Iterator2:\n");
+	struct fstr fk = FSTR_INIT;
+	struct fstr fv = FSTR_INIT;
+	struct keystore_iterator it;
+	keystore_iterator_init(&it, &o);
+	while (keystore_iterator_next_pair_f(&it, &fk, &fv)) {
+		printf(" * " PRIfs ": " PRIfs "\n", prifs(&fk), prifs(&fv));
+	}
+	keystore_iterator_destroy(&it);
+	fstr_destroy(&fv);
+	fstr_destroy(&fk);
+	printf("\n");
+	}
+
+
 	keystore_destroy(&o);
 }
 #endif

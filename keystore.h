@@ -51,6 +51,7 @@ const char *keystore_iterator_next_value(struct keystore_iterator *inst, size_t 
 
 bool keystore_iterator_next_key_f(struct keystore_iterator *inst, struct fstr *out);
 bool keystore_iterator_next_value_f(struct keystore_iterator *inst, struct fstr *out);
+bool keystore_iterator_next_pair_f(struct keystore_iterator *inst, struct fstr *key, struct fstr *val);
 
 bool keystore_iterator_end(struct keystore_iterator *inst);
 void keystore_iterator_destroy(struct keystore_iterator *inst);
